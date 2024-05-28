@@ -13,7 +13,7 @@
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
 #include <linux/scatterlist.h>
-#include <linux/sfi.h>
+//#include <linux/sfi.h>
 #include <linux/irq.h>
 #include <linux/module.h>
 #include <linux/notifier.h>
