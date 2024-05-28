@@ -575,30 +575,30 @@ release_icc:
 
 void apcie_icc_remove(struct apcie_dev *sc)
 {
-	sc_err("apcie_icc_remove: shouldn't normally be called\n");
+    sc_err("apcie_icc_remove: shouldn't normally be called\n");
 
-	pm_power_off = NULL;
-	icc_pwrbutton_remove(sc);
-	icc_i2c_remove(sc);
-	mutex_lock(&icc_mutex);
-	iowrite32(0, sc->glue_bar_to_use + APCIE_REG_ICC_IRQ_MASK);
-	icc_sc = NULL;
-	mutex_unlock(&icc_mutex);
-	free_irq(apcie_irqnum(sc, APCIE_SUBFUNC_ICC), sc);
-	iounmap(sc->icc.spm);
-	release_mem_region(sc->icc.spm_base, APCIE_SPM_ICC_SIZE);
-	release_mem_region(pci_resource_start(sc->pdev, sc->glue_bar_to_use_num) +
-				   APCIE_RGN_ICC_BASE, APCIE_RGN_ICC_SIZE);
+    pm_power_off = NULL;
+    icc_pwrbutton_remove(sc);
+    icc_i2c_remove(sc);
+    mutex_lock(&icc_mutex);
+    iowrite32(0, sc->glue_bar_to_use + APCIE_REG_ICC_IRQ_MASK);
+    icc_sc = NULL;
+    mutex_unlock(&icc_mutex);
+    free_irq(apcie_irqnum(sc, APCIE_SUBFUNC_ICC), sc);
+    iounmap(sc->icc.spm);
+    release_mem_region(sc->icc.spm_base, APCIE_SPM_ICC_SIZE);
+    release_mem_region(pci_resource_start(sc->pdev, sc->glue_bar_to_use_num) +
+                   APCIE_RGN_ICC_BASE, APCIE_RGN_ICC_SIZE);
 }
 
 #ifdef CONFIG_PM
 void apcie_icc_suspend(struct apcie_dev *sc, pm_message_t state)
 {
-	// Maybe
+    // Maybe
 }
 
 void apcie_icc_resume(struct apcie_dev *sc)
 {
-	// Maybe
+    // Maybe
 }
-#endif
+#endif // CONFIG_PM
