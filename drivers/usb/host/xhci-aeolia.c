@@ -404,7 +404,7 @@ static int xhci_aeolia_probe(struct pci_dev *dev, const struct pci_device_id *id
 remove_hcds:
 	while (idx--)
 		xhci_aeolia_remove_one(dev, idx);
-	apcie_free_irqs(dev->irq, axhci->nr_irqs);
+	apcie_free_irqs(dev);
 free_axhci:
 	devm_kfree(&dev->dev, axhci);
 	pci_set_drvdata(dev, NULL);
@@ -431,7 +431,7 @@ static void xhci_aeolia_remove(struct pci_dev *dev)
 			xhci_aeolia_remove_one(dev, idx);
 	}
 
-	apcie_free_irqs(dev->irq, axhci->nr_irqs);
+	apcie_free_irqs(dev);
 	//kfree(axhci);
 
 	pci_disable_device(dev);
