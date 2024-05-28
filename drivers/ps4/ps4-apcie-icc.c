@@ -275,7 +275,8 @@ extern bool bpcie_initialized;
 int apcie_icc_cmd(u8 major, u16 minor, const void *data, u16 length, void *reply, u16 reply_length)
 {
 	if (bpcie_initialized)
-		return bpcie_icc_cmd(major, minor, data, length, reply, reply_length);
+		// TEMP CHANGE SO IT COMPILES
+		return apcie_icc_cmd(major, minor, data, length, reply, reply_length);
 	
 	int ret;
 
