@@ -13,6 +13,7 @@
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
 #include <linux/scatterlist.h>
+#include <linux/sfi.h>
 #include <linux/irq.h>
 #include <linux/module.h>
 #include <linux/notifier.h>
@@ -24,15 +25,17 @@
 #include <asm/io_apic.h>
 #include <asm/io.h>
 #include <asm/i8259.h>
+#include <asm/apb_timer.h>
 #include <asm/reboot.h>
 #include <asm/msr.h>
 #include <asm/ps4.h>
 
 static bool is_ps4;
 bool apcie_initialized;
+bool bpcie_initialized;
 
 /*
- * The RTC is part of the Aeolia PCI device and will be implemented there as
+ * The RTC is part of the Aeolia/Baikal PCI device and will be implemented there as
  * an RTC class device; stub these out.
  */
 static void dummy_get_wallclock(struct timespec64 *now)
@@ -52,9 +55,17 @@ int apcie_status(void)
 {
 	if (!is_ps4)
 		return -ENODEV;
-	return apcie_initialized;
+	return apcie_initialized || bpcie_initialized;
 }
 EXPORT_SYMBOL_GPL(apcie_status);
+
+int bpcie_status(void)
+{
+	if (!is_ps4)
+		return -ENODEV;
+	return bpcie_initialized;
+}
+EXPORT_SYMBOL_GPL(bpcie_status);
 
 void icc_reboot(void);
 
