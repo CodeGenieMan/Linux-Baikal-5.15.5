@@ -11,10 +11,6 @@
  * GNU General Public License for more details.
  */
 
-
-// TODO (ps4patches): Make functions atomic,
-//  https://lore.kernel.org/linux-arm-kernel/20211020181901.2114645-5-sam@ravnborg.org/
-
 #include <asm/ps4.h>
 
 #include <drm/drm_crtc.h>
@@ -156,14 +152,8 @@ static struct ps4_bridge g_bridge = {
 	.mutex = __MUTEX_INITIALIZER(g_bridge.mutex)
 };
 
-static int first = true;
-void icc_do_pulse_orange(void);
 static void cq_init(struct i2c_cmdqueue *q, u8 code)
 {
-    if(first) {
-        first = false;
-        icc_do_pulse_orange();
-    }
 
 	q->req.code = code;
 	q->req.count = 0;
