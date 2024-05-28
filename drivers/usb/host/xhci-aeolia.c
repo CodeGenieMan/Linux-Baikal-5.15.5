@@ -14,6 +14,7 @@
 #include <linux/acpi.h>
 #include <asm/ps4.h>
 #include "xhci-aeolia.h"
+#include <linux/delay.h>
 #include "../../ps4/aeolia.h"
 
 #include "xhci.h"
@@ -138,12 +139,9 @@ static void xhci_aeolia_remove_one(struct pci_dev *dev, int index)
 	usb_remove_hcd(xhci->shared_hcd);
 	usb_remove_hcd(hcd);
 	usb_put_hcd(xhci->shared_hcd);
-
-	if(dev->device == PCI_DEVICE_ID_SONY_BELIZE_XHCI ||
-	   dev->device == PCI_DEVICE_ID_SONY_BAIKAL_XHCI) {
-		iounmap(hcd->regs);
-	}
+	iounmap(hcd->regs);
 	usb_put_hcd(hcd);
+	
 	axhci->hcd[index] = NULL;
 }
 
@@ -220,20 +218,11 @@ static int ahci_init_one(struct pci_dev *pdev)
 
 		ctlr = kzalloc(sizeof(*ctlr), GFP_KERNEL);
 		if (ctlr) {
-			// Yes, XHCI is used here on purpose
-			if(pdev->device == PCI_DEVICE_ID_SONY_BAIKAL_XHCI) {
-				ctlr->r_mem = r_mem;
-				ctlr->dev_id = 0x90DE104D;
-				ctlr->apcie_bpcie_buffer = 0x04;//for ahci 0x024
-				baikal_pcie_sata_phy_init(&pdev->dev, ctlr);
-				kfree(ctlr);
-			} else {
-				ctlr->r_mem = r_mem;
-				ctlr->dev_id = 0; //or 0x90ca104d;
-				ctlr->trace_len = 6;
-				belize_pcie_sata_phy_init(&pdev->dev, ctlr);
-				kfree(ctlr);
-			}
+			ctlr->r_mem = r_mem;
+			ctlr->dev_id = 0x90DE104D;
+			ctlr->apcie_bpcie_buffer = 0x04;//for ahci 0x024
+			bpcie_sata_phy_init(&pdev->dev, ctlr);
+			kfree(ctlr);
 		}
 		kfree(r_mem);
 	}
@@ -285,15 +274,7 @@ static int ahci_init_one(struct pci_dev *pdev)
 
 	host->private_data = hpriv;
 
-	if (pdev->device == PCI_DEVICE_ID_SONY_BELIZE_XHCI)
-	{
-		int index = 1;
-		int irq = (axhci->nr_irqs > 1) ? (pdev->irq + index) : pdev->irq;
-		hpriv->irq = irq;
-	} else {
-		// TODO (ps4patches): Can't this be used for belize too?
-		hpriv->irq = pci_irq_vector(pdev, 1);
-	}
+	hpriv->irq = pci_irq_vector(pdev, 1);
 
 	if (!(hpriv->cap & HOST_CAP_SSS) || ahci_ignore_sss)
 		host->flags |= ATA_HOST_PARALLEL_SCAN;
@@ -331,10 +312,6 @@ static int ahci_init_one(struct pci_dev *pdev)
 	if (!bus_master) {
 		pci_set_master(pdev);
 		bus_master = true;
-	}
-
-	if (pdev->device == PCI_DEVICE_ID_SONY_BAIKAL_XHCI) {
-		ahci_sht.dma_boundary = 0xB7FFFFFFLL;
 	}
 
 	rc = ahci_host_activate(host, &ahci_sht);
@@ -394,20 +371,11 @@ static int xhci_aeolia_probe(struct pci_dev *dev, const struct pci_device_id *id
 	}
 	pci_set_drvdata(dev, axhci);
 
-	if (dev->device == PCI_DEVICE_ID_SONY_BELIZE_XHCI) {
-		axhci->nr_irqs = retval = apcie_assign_irqs(dev, NR_DEVICES);
-	} else {
-		axhci->nr_irqs = retval = pci_alloc_irq_vectors(
-			dev, NR_DEVICES, INT_MAX, PCI_IRQ_MSIX | PCI_IRQ_MSI);
-	}
-  	dev_info(&dev->dev, "pci_alloc_irq_vectors returned %d", axhci->nr_irqs);
+	axhci->nr_irqs = retval = pci_alloc_irq_vectors(dev, NR_DEVICES, INT_MAX,
+		PCI_IRQ_MSIX | PCI_IRQ_MSI);//apcie_assign_irqs(dev, NR_DEVICES);
 
 	if (retval < 0) {
 		goto free_axhci;
-	}
-
-	if(dev->device == PCI_DEVICE_ID_SONY_AEOLIA_XHCI) {
-		pci_set_master(dev);
 	}
 
 	if (pci_set_dma_mask(dev, DMA_BIT_MASK(31)) ||
@@ -415,18 +383,13 @@ static int xhci_aeolia_probe(struct pci_dev *dev, const struct pci_device_id *id
 		return -ENODEV;
 	}
 
-	if(dev->device != PCI_DEVICE_ID_SONY_AEOLIA_XHCI) {
-		// TODO (ps4patches): fix hdd support for baikal
-		if (dev->device != PCI_DEVICE_ID_SONY_BAIKAL_XHCI) {
-		  retval = ahci_init_one(dev);
-		  dev_dbg(&dev->dev, "ahci_init_one returned %d", retval);
-		}
-		if (!bus_master) {
-			pci_set_master(dev);
-			bus_master = true;
-		}
-	}
+	retval = ahci_init_one(dev);
+	dev_dbg(&dev->dev, "ahci_init_one returned %d", retval);
 
+	if (!bus_master) {
+		pci_set_master(dev);
+		bus_master = true;
+	}
 	for (idx = 0; idx < NR_DEVICES; idx++) {
  		if(dev->device != PCI_DEVICE_ID_SONY_AEOLIA_XHCI && idx == 1){ //this is for Belize and Baikal
 			continue;
@@ -441,14 +404,10 @@ static int xhci_aeolia_probe(struct pci_dev *dev, const struct pci_device_id *id
 remove_hcds:
 	while (idx--)
 		xhci_aeolia_remove_one(dev, idx);
-	apcie_free_irqs(dev);
+	apcie_free_irqs(dev->irq, axhci->nr_irqs);
 free_axhci:
 	devm_kfree(&dev->dev, axhci);
-
-	// TODO (ps4patches): Doesn't aeolia also need this?
-	if(dev->device != PCI_DEVICE_ID_SONY_AEOLIA_XHCI) {
-		pci_set_drvdata(dev, NULL);
-	}
+	pci_set_drvdata(dev, NULL);
 disable_device:
 	pci_disable_device(dev);
 	return retval;
@@ -465,33 +424,21 @@ static void xhci_aeolia_remove(struct pci_dev *dev)
 		if(dev->device != PCI_DEVICE_ID_SONY_AEOLIA_XHCI) {
 			if(idx != 1)
 				xhci_aeolia_remove_one(dev, idx);
-			else {
-				if (dev->device == PCI_DEVICE_ID_SONY_BAIKAL_XHCI) {
-					ahci_remove_one(dev);				
-				}
-			}
+			else
+				ahci_remove_one(dev);				
 		}
 		else
 			xhci_aeolia_remove_one(dev, idx);
 	}
 
-	apcie_free_irqs(dev);
-
-	if(dev->device == PCI_DEVICE_ID_SONY_AEOLIA_XHCI) {
-		kfree(axhci);
-	}
+	apcie_free_irqs(dev->irq, axhci->nr_irqs);
+	//kfree(axhci);
 
 	pci_disable_device(dev);
 }
 
-static void xhci_hcd_pci_shutdown(struct pci_dev *dev){
-
-	// We want to use the normal shutdown if we are aeolia
-	if (dev->device == PCI_DEVICE_ID_SONY_AEOLIA_XHCI)
-	{
-		usb_hcd_pci_shutdown(dev);
-		return;
-	}
+static void xhci_hcd_pci_shutdown(struct pci_dev *dev)
+{
 
 	struct aeolia_xhci *axhci;
 	struct usb_hcd	   *hcd;
@@ -583,7 +530,10 @@ static struct pci_driver xhci_aeolia_driver = {
 
 	.probe =	xhci_aeolia_probe,
 	.remove =	xhci_aeolia_remove,
-	/* suspend and resume implemented later */
+	/* suspend and resume implemented later
+	
+	.shutdown = 	usb_hcd_platform_shutdown, */
+	.shutdown = 	usb_hcd_pci_shutdown,
 	.shutdown = 	xhci_hcd_pci_shutdown,
 #ifdef CONFIG_PM_SLEEP
 	.driver = {
