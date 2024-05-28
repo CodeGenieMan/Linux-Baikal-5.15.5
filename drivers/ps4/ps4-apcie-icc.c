@@ -452,7 +452,6 @@ static void *ioctl_tmp_buf = NULL;
  	.unlocked_ioctl = icc_ioctl,
  };
 
-
 int apcie_icc_init(struct apcie_dev *sc)
 {
 	int ret;
@@ -474,6 +473,7 @@ int apcie_icc_init(struct apcie_dev *sc)
 			"apcie.icc")) {
 	sc_err("icc: failed to request ICC register region\n");
 	return -EBUSY;
+	}
 
 	sc->icc.spm_base = pci_resource_start(mem_dev, 5) + APCIE_SPM_ICC_BASE;
 	if (!request_mem_region(sc->icc.spm_base, APCIE_SPM_ICC_SIZE,
@@ -576,7 +576,6 @@ release_icc:
 void apcie_icc_remove(struct apcie_dev *sc)
 {
     sc_err("apcie_icc_remove: shouldn't normally be called\n");
-
     pm_power_off = NULL;
     icc_pwrbutton_remove(sc);
     icc_i2c_remove(sc);
@@ -594,11 +593,9 @@ void apcie_icc_remove(struct apcie_dev *sc)
 #ifdef CONFIG_PM
 void apcie_icc_suspend(struct apcie_dev *sc, pm_message_t state)
 {
-    // Maybe
 }
 
 void apcie_icc_resume(struct apcie_dev *sc)
 {
-    // Maybe
 }
-#endif // CONFIG_PM
+#endif 
