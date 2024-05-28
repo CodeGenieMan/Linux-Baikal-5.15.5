@@ -275,7 +275,7 @@ extern bool bpcie_initialized;
 int apcie_icc_cmd(u8 major, u16 minor, const void *data, u16 length, void *reply, u16 reply_length)
 {
 	if (bpcie_initialized)
-		return bpcie_icc_cmd(major, minor, data, length, reply, reply_length);
+		return apcie_icc_cmd(major, minor, data, length, reply, reply_length);
 	
 	int ret;
 
@@ -594,9 +594,11 @@ void apcie_icc_remove(struct apcie_dev *sc)
 #ifdef CONFIG_PM
 void apcie_icc_suspend(struct apcie_dev *sc, pm_message_t state)
 {
+	// Maybe
 }
 
 void apcie_icc_resume(struct apcie_dev *sc)
 {
+	// Maybe
 }
 #endif
