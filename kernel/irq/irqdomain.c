@@ -214,7 +214,7 @@ struct irq_domain *__irq_domain_add(struct fwnode_handle *fwnode, int size,
 
 	/* Fill structure */
 	INIT_RADIX_TREE(&domain->revmap_tree, GFP_KERNEL);
-	mutex_init(&domain->revmap_tree_mutex);
+	mutex_init(&domain->revmap_mutex);
 	domain->ops = ops;
 	domain->host_data = host_data;
 	domain->hwirq_max = hwirq_max;
@@ -480,9 +480,9 @@ static void irq_domain_clear_mapping(struct irq_domain *domain,
 	if (hwirq < domain->revmap_size) {
 		domain->linear_revmap[hwirq] = 0;
 	} else {
-		mutex_lock(&domain->revmap_tree_mutex);
+		mutex_lock(&domain->revmap_mutex);
 		radix_tree_delete(&domain->revmap_tree, hwirq);
-		mutex_unlock(&domain->revmap_tree_mutex);
+		mutex_unlock(&domain->revmap_mutex);
 	}
 }
 
@@ -493,9 +493,9 @@ static void irq_domain_set_mapping(struct irq_domain *domain,
 	if (hwirq < domain->revmap_size) {
 		domain->linear_revmap[hwirq] = irq_data->irq;
 	} else {
-		mutex_lock(&domain->revmap_tree_mutex);
+		mutex_lock(&domain->revmap_mutex);
 		radix_tree_insert(&domain->revmap_tree, hwirq, irq_data);
-		mutex_unlock(&domain->revmap_tree_mutex);
+		mutex_unlock(&domain->revmap_mutex);
 	}
 }
 
@@ -1391,11 +1391,11 @@ static void irq_domain_fix_revmap(struct irq_data *d)
 		return; /* Not using radix tree. */
 
 	/* Fix up the revmap. */
-	mutex_lock(&d->domain->revmap_tree_mutex);
+	mutex_lock(&d->domain->revmap_mutex);
 	slot = radix_tree_lookup_slot(&d->domain->revmap_tree, d->hwirq);
 	if (slot)
 		radix_tree_replace_slot(&d->domain->revmap_tree, slot, d);
-	mutex_unlock(&d->domain->revmap_tree_mutex);
+	mutex_unlock(&d->domain->revmap_mutex);
 }
 
 /**
